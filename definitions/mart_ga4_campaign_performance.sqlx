@@ -38,6 +38,4 @@ FROM
 
 GROUP BY
   1, 2, 3, 4
-ORDER BY
-  campaign_date DESC,
-  sessions DESC
+
