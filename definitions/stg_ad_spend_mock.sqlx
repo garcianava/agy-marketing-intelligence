@@ -1,0 +1,38 @@
+config {
+  type: "table",
+  schema: "ga4_marts",
+  name: "stg_ad_spend_mock",
+  description: "Generates synthetic daily ad spend, clicks, and impressions for campaigns matching GA4 sample dates."
+}
+
+-- Generate synthetic cost, clicks, and impressions for standard marketing campaigns
+WITH date_series AS (
+  SELECT campaign_date 
+  FROM UNNEST(GENERATE_DATE_ARRAY('2020-11-01', '2021-01-31', INTERVAL 1 DAY)) AS campaign_date
+),
+
+campaign_templates AS (
+  SELECT 'google' AS utm_source, 'cpc' AS utm_medium, 'Holiday_Promo' AS utm_campaign, 50000 AS base_impressions, 0.025 AS base_ctr, 0.45 AS avg_cpc UNION ALL
+  SELECT 'google' AS utm_source, 'cpc' AS utm_medium, 'New_Arrivals' AS utm_campaign, 35000 AS base_impressions, 0.018 AS base_ctr, 0.60 AS avg_cpc UNION ALL
+  SELECT 'facebook' AS utm_source, 'cpc' AS utm_medium, 'Retargeting_Fall' AS utm_campaign, 25000 AS base_impressions, 0.032 AS base_ctr, 0.85 AS avg_cpc UNION ALL
+  SELECT 'youtube' AS utm_source, 'social' AS utm_medium, 'Brand_Awareness' AS utm_campaign, 80000 AS base_impressions, 0.008 AS base_ctr, 1.20 AS avg_cpc UNION ALL
+  SELECT 'newsletter' AS utm_source, 'email' AS utm_medium, 'Weekly_Newsletter' AS utm_campaign, 12000 AS base_impressions, 0.055 AS base_ctr, 0.15 AS avg_cpc
+)
+
+SELECT
+  d.campaign_date,
+  c.utm_source,
+  c.utm_medium,
+  c.utm_campaign,
+  
+  -- Add slight daily variation/randomness based on date hashing
+  CAST(ROUND(c.base_impressions * (1 + MOD(EXTRACT(DAY FROM d.campaign_date), 10) * 0.03)) AS INT64) AS impressions,
+  
+  CAST(ROUND(c.base_impressions * c.base_ctr * (1 + MOD(EXTRACT(DAY FROM d.campaign_date) + 5, 8) * 0.02)) AS INT64) AS clicks,
+  
+  ROUND(c.base_impressions * c.base_ctr * c.avg_cpc * (1 + MOD(EXTRACT(DAY FROM d.campaign_date) + 2, 12) * 0.04), 2) AS ad_cost
+
+FROM
+  date_series d
+CROSS JOIN
+  campaign_templates c

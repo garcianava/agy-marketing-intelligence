@@ -2,17 +2,30 @@ config {
   type: "table",
   schema: "ga4_marts",
   name: "mart_ga4_campaign_performance",
-  description: "Aggregated daily Google Analytics 4 campaign and traffic source performance metrics.",
+  description: "Aggregated daily campaign performance metrics combining GA4 session telemetry and ad spend statistics.",
   columns: {
-    campaign_date: "Date of campaign events",
+    campaign_date: "Date of campaign events and spend",
     utm_source: "Traffic source parameter",
     utm_medium: "Traffic medium parameter",
     utm_campaign: "Traffic campaign parameter",
-    active_users: "Count of unique user pseudo IDs",
-    sessions: "Count of unique session IDs",
-    page_views: "Total page views",
-    purchase_conversions: "Total number of completed purchases",
-    total_revenue: "Total e-commerce purchase revenue generated in USD"
+    
+    -- GA4 Metrics
+    active_users: "Count of unique active user pseudo IDs from GA4",
+    sessions: "Count of unique session IDs from GA4",
+    page_views: "Total page views tracked by GA4",
+    purchase_conversions: "Total completed purchase transactions tracked by GA4",
+    total_revenue: "Total e-commerce purchase revenue generated in USD from GA4",
+    
+    -- Ad Spend Metrics (Synthetic/Integrated)
+    impressions: "Total paid ad impressions served",
+    clicks: "Total paid ad clicks registered",
+    ad_cost: "Total ad spend/cost in USD",
+    
+    -- Calculated Marketing KPIs
+    ctr: "Click-Through Rate (Clicks / Impressions)",
+    cpc: "Cost Per Click (Ad Cost / Clicks)",
+    cpm: "Cost Per Thousand Impressions (Ad Cost / Impressions * 1000)",
+    roi: "Return on Ad Investment ((Total Revenue - Ad Cost) / Ad Cost)"
   },
   bigquery: {
     partitionBy: "campaign_date",
@@ -20,22 +33,83 @@ config {
   }
 }
 
+WITH ga4_traffic AS (
+  SELECT
+    event_date AS campaign_date,
+    COALESCE(utm_source, '(direct)') AS utm_source,
+    COALESCE(utm_medium, '(none)') AS utm_medium,
+    COALESCE(utm_campaign, '(not set)') AS utm_campaign,
+    
+    COUNT(DISTINCT user_pseudo_id) AS active_users,
+    COUNT(DISTINCT session_id) AS sessions,
+    COUNTIF(event_name = 'page_view') AS page_views,
+    COUNTIF(event_name = 'purchase') AS purchase_conversions,
+    SUM(COALESCE(purchase_revenue, 0)) AS total_revenue
+  FROM
+    ${ref("stg_ga4_events")}
+  GROUP BY
+    1, 2, 3, 4
+),
+
+ad_spend AS (
+  SELECT
+    campaign_date,
+    utm_source,
+    utm_medium,
+    utm_campaign,
+    impressions,
+    clicks,
+    ad_cost
+  FROM
+    ${ref("stg_ad_spend_mock")}
+),
+
+combined AS (
+  SELECT
+    campaign_date,
+    utm_source,
+    utm_medium,
+    utm_campaign,
+    
+    -- GA4 Metrics
+    COALESCE(ga.active_users, 0) AS active_users,
+    COALESCE(ga.sessions, 0) AS sessions,
+    COALESCE(ga.page_views, 0) AS page_views,
+    COALESCE(ga.purchase_conversions, 0) AS purchase_conversions,
+    COALESCE(ga.total_revenue, 0) AS total_revenue,
+    
+    -- Spend Metrics
+    COALESCE(sp.impressions, 0) AS impressions,
+    COALESCE(sp.clicks, 0) AS clicks,
+    COALESCE(sp.ad_cost, 0) AS ad_cost
+  FROM
+    ga4_traffic ga
+  FULL OUTER JOIN
+    ad_spend sp
+  USING (campaign_date, utm_source, utm_medium, utm_campaign)
+)
+
 SELECT
-  event_date AS campaign_date,
-  COALESCE(utm_source, '(direct)') AS utm_source,
-  COALESCE(utm_medium, '(none)') AS utm_medium,
-  COALESCE(utm_campaign, '(referral)') AS utm_campaign,
+  campaign_date,
+  utm_source,
+  utm_medium,
+  utm_campaign,
   
-  -- Core GA4 Metrics
-  COUNT(DISTINCT user_pseudo_id) AS active_users,
-  COUNT(DISTINCT session_id) AS sessions,
-  COUNTIF(event_name = 'page_view') AS page_views,
-  COUNTIF(event_name = 'purchase') AS purchase_conversions,
-  SUM(COALESCE(purchase_revenue, 0)) AS total_revenue
+  -- Core Metrics
+  active_users,
+  sessions,
+  page_views,
+  purchase_conversions,
+  total_revenue,
+  impressions,
+  clicks,
+  ad_cost,
+  
+  -- Calculated Marketing KPIs (SAFE_DIVIDE prevents division-by-zero errors)
+  SAFE_DIVIDE(clicks, impressions) AS ctr,
+  SAFE_DIVIDE(ad_cost, clicks) AS cpc,
+  SAFE_DIVIDE(ad_cost, impressions) * 1000 AS cpm,
+  SAFE_DIVIDE(total_revenue - ad_cost, ad_cost) AS roi
 
 FROM
-  ${ref("stg_ga4_events")}
-
-GROUP BY
-  1, 2, 3, 4
-
+  combined
