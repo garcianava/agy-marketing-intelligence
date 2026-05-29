@@ -9,19 +9,19 @@ config {
     utm_medium: "Traffic medium parameter",
     utm_campaign: "Traffic campaign parameter",
     
-    -- GA4 Metrics
+    // GA4 Metrics
     active_users: "Count of unique active user pseudo IDs from GA4",
     sessions: "Count of unique session IDs from GA4",
     page_views: "Total page views tracked by GA4",
     purchase_conversions: "Total completed purchase transactions tracked by GA4",
     total_revenue: "Total e-commerce purchase revenue generated in USD from GA4",
     
-    -- Ad Spend Metrics (Synthetic/Integrated)
+    // Ad Spend Metrics (Synthetic/Integrated)
     impressions: "Total paid ad impressions served",
     clicks: "Total paid ad clicks registered",
     ad_cost: "Total ad spend/cost in USD",
     
-    -- Calculated Marketing KPIs
+    // Calculated Marketing KPIs
     ctr: "Click-Through Rate (Clicks / Impressions)",
     cpc: "Cost Per Click (Ad Cost / Clicks)",
     cpm: "Cost Per Thousand Impressions (Ad Cost / Impressions * 1000)",
