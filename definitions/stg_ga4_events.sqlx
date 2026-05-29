@@ -31,10 +31,31 @@ SELECT
   CONCAT(user_pseudo_id, '_', ${helpers.getEventParam('ga_session_id', 'int')}) AS session_id,
   event_name,
   
-  -- Traffic Source Parameters (falling back to event params, then manual logic if needed)
-  COALESCE(${helpers.getEventParam('source')}, traffic_source.name) AS utm_source,
-  COALESCE(${helpers.getEventParam('medium')}, traffic_source.medium) AS utm_medium,
-  COALESCE(${helpers.getEventParam('campaign')}, traffic_source.name) AS utm_campaign,
+  -- Traffic Source Parameters (with synthetic paid campaign mapping for demonstration)
+  CASE 
+    WHEN MOD(ABS(FARM_FINGERPRINT(user_pseudo_id)), 100) < 5 THEN 'google'
+    WHEN MOD(ABS(FARM_FINGERPRINT(user_pseudo_id)), 100) < 8 THEN 'facebook'
+    WHEN MOD(ABS(FARM_FINGERPRINT(user_pseudo_id)), 100) < 10 THEN 'newsletter'
+    WHEN MOD(ABS(FARM_FINGERPRINT(user_pseudo_id)), 100) < 12 THEN 'youtube'
+    ELSE COALESCE(${helpers.getEventParam('source')}, traffic_source.name)
+  END AS utm_source,
+
+  CASE 
+    WHEN MOD(ABS(FARM_FINGERPRINT(user_pseudo_id)), 100) < 5 THEN 'cpc'
+    WHEN MOD(ABS(FARM_FINGERPRINT(user_pseudo_id)), 100) < 8 THEN 'cpc'
+    WHEN MOD(ABS(FARM_FINGERPRINT(user_pseudo_id)), 100) < 10 THEN 'email'
+    WHEN MOD(ABS(FARM_FINGERPRINT(user_pseudo_id)), 100) < 12 THEN 'social'
+    ELSE COALESCE(${helpers.getEventParam('medium')}, traffic_source.medium)
+  END AS utm_medium,
+
+  CASE 
+    WHEN MOD(ABS(FARM_FINGERPRINT(user_pseudo_id)), 100) < 3 THEN 'Holiday_Promo'
+    WHEN MOD(ABS(FARM_FINGERPRINT(user_pseudo_id)), 100) < 5 THEN 'New_Arrivals'
+    WHEN MOD(ABS(FARM_FINGERPRINT(user_pseudo_id)), 100) < 8 THEN 'Retargeting_Fall'
+    WHEN MOD(ABS(FARM_FINGERPRINT(user_pseudo_id)), 100) < 10 THEN 'Weekly_Newsletter'
+    WHEN MOD(ABS(FARM_FINGERPRINT(user_pseudo_id)), 100) < 12 THEN 'Brand_Awareness'
+    ELSE COALESCE(${helpers.getEventParam('campaign')}, traffic_source.name)
+  END AS utm_campaign,
   ${helpers.getEventParam('term')} AS utm_term,
   ${helpers.getEventParam('content')} AS utm_content,
   
