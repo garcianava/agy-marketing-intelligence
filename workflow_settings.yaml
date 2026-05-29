@@ -2,7 +2,7 @@
 # Learn more at: https://cloud.google.com/dataform/docs/workflow-settings
 
 # The default Google Cloud Project ID where your tables will be created
-defaultProject: "your-gcp-project-id"
+defaultProject: "customer-qa-no-sources"
 
 # The default BigQuery dataset where output tables/views will be written
 defaultDataset: "ga4_marts"
