@@ -25,7 +25,8 @@ config {
     ctr: "Click-Through Rate (Clicks / Impressions)",
     cpc: "Cost Per Click (Ad Cost / Clicks)",
     cpm: "Cost Per Thousand Impressions (Ad Cost / Impressions * 1000)",
-    roi: "Return on Ad Investment ((Total Revenue - Ad Cost) / Ad Cost)"
+    roi: "Return on Ad Investment ((Total Revenue - Ad Cost) / Ad Cost)",
+    roas: "Return on Ad Spend (Total Revenue / Ad Cost)"
   },
   bigquery: {
     partitionBy: "campaign_date",
@@ -109,7 +110,8 @@ SELECT
   SAFE_DIVIDE(clicks, impressions) AS ctr,
   SAFE_DIVIDE(ad_cost, clicks) AS cpc,
   SAFE_DIVIDE(ad_cost, impressions) * 1000 AS cpm,
-  SAFE_DIVIDE(total_revenue - ad_cost, ad_cost) AS roi
+  SAFE_DIVIDE(total_revenue - ad_cost, ad_cost) AS roi,
+  SAFE_DIVIDE(total_revenue, ad_cost) AS roas
 
 FROM
   combined
