@@ -1,0 +1,7 @@
+config {
+  type: "declaration",
+  database: "your-gcp-project-id",
+  schema: "analytics_123456789",
+  name: "events_*",
+  description: "Raw Google Analytics 4 exported tables from BigQuery"
+}

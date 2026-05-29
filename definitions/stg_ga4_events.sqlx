@@ -1,0 +1,54 @@
+config {
+  type: "incremental",
+  schema: "ga4_marts",
+  name: "stg_ga4_events",
+  description: "Staging model that extracts, flattens, and sessionizes Google Analytics 4 events.",
+  columns: {
+    event_date: "Date of the event",
+    event_timestamp: "Timestamp of the event in microseconds",
+    user_pseudo_id: "Unique identifier for the user's browser/app instance",
+    session_id: "Unique session identifier combining user_pseudo_id and ga_session_id",
+    event_name: "Name of the event (e.g. session_start, page_view, purchase)",
+    utm_source: "Traffic source parameter",
+    utm_medium: "Traffic medium parameter",
+    utm_campaign: "Traffic campaign parameter",
+    utm_term: "Traffic term/keyword parameter",
+    utm_content: "Traffic content parameter",
+    page_location: "The URL of the webpage where the event was recorded",
+    purchase_revenue: "Revenue generated from a purchase event (if applicable)"
+  },
+  bigquery: {
+    partitionBy: "event_date",
+    clusterBy: ["utm_source", "utm_medium", "utm_campaign"]
+  }
+}
+
+SELECT
+  PARSE_DATE('%Y%m%d', event_date) AS event_date,
+  TIMESTAMP_MICROS(event_timestamp) AS event_timestamp,
+  user_pseudo_id,
+  -- Concatenate user_pseudo_id and ga_session_id to create a unique session identifier
+  CONCAT(user_pseudo_id, '_', ${helpers.getEventParam('ga_session_id', 'int')}) AS session_id,
+  event_name,
+  
+  -- Traffic Source Parameters (falling back to event params, then manual logic if needed)
+  COALESCE(${helpers.getEventParam('source')}, traffic_source.name) AS utm_source,
+  COALESCE(${helpers.getEventParam('medium')}, traffic_source.medium) AS utm_medium,
+  COALESCE(${helpers.getEventParam('campaign')}, traffic_source.name) AS utm_campaign,
+  ${helpers.getEventParam('term')} AS utm_term,
+  ${helpers.getEventParam('content')} AS utm_content,
+  
+  -- Page context
+  ${helpers.getEventParam('page_location')} AS page_location,
+  
+  -- E-commerce metrics
+  CAST(event_value_in_usd AS FLOAT64) AS purchase_revenue
+
+FROM
+  ${ref("events_*")}
+
+WHERE
+  -- Process active events matching a window
+  _TABLE_SUFFIX >= '20260101'
+  
+  ${when(incremental(), `AND PARSE_DATE('%Y%m%d', event_date) >= DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)`) }

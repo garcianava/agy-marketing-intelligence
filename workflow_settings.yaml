@@ -1,0 +1,14 @@
+# Dataform workflow settings
+# Learn more at: https://cloud.google.com/dataform/docs/workflow-settings
+
+# The default Google Cloud Project ID where your tables will be created
+defaultProject: "your-gcp-project-id"
+
+# The default BigQuery dataset where output tables/views will be written
+defaultDataset: "ga4_marts"
+
+# The default geographic location for your BigQuery datasets (e.g., US, EU)
+defaultLocation: "US"
+
+# The dataset where assertion results (data quality checks) will be stored
+defaultAssertionDataset: "ga4_assertions"

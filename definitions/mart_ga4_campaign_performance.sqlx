@@ -1,0 +1,43 @@
+config {
+  type: "table",
+  schema: "ga4_marts",
+  name: "mart_ga4_campaign_performance",
+  description: "Aggregated daily Google Analytics 4 campaign and traffic source performance metrics.",
+  columns: {
+    campaign_date: "Date of campaign events",
+    utm_source: "Traffic source parameter",
+    utm_medium: "Traffic medium parameter",
+    utm_campaign: "Traffic campaign parameter",
+    active_users: "Count of unique user pseudo IDs",
+    sessions: "Count of unique session IDs",
+    page_views: "Total page views",
+    purchase_conversions: "Total number of completed purchases",
+    total_revenue: "Total e-commerce purchase revenue generated in USD"
+  },
+  bigquery: {
+    partitionBy: "campaign_date",
+    clusterBy: ["utm_source", "utm_medium", "utm_campaign"]
+  }
+}
+
+SELECT
+  event_date AS campaign_date,
+  COALESCE(utm_source, '(direct)') AS utm_source,
+  COALESCE(utm_medium, '(none)') AS utm_medium,
+  COALESCE(utm_campaign, '(referral)') AS utm_campaign,
+  
+  -- Core GA4 Metrics
+  COUNT(DISTINCT user_pseudo_id) AS active_users,
+  COUNT(DISTINCT session_id) AS sessions,
+  COUNTIF(event_name = 'page_view') AS page_views,
+  COUNTIF(event_name = 'purchase') AS purchase_conversions,
+  SUM(COALESCE(purchase_revenue, 0)) AS total_revenue
+
+FROM
+  ${ref("stg_ga4_events")}
+
+GROUP BY
+  1, 2, 3, 4
+ORDER BY
+  campaign_date DESC,
+  sessions DESC
