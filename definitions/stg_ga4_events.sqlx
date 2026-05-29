@@ -48,7 +48,7 @@ FROM
   ${ref("events_*")}
 
 WHERE
-  -- Process active events matching a window
-  _TABLE_SUFFIX >= '20260101'
+  -- Process active events matching a window (public sample dataset starts in late 2020)
+  _TABLE_SUFFIX >= '20201101'
   
   ${when(incremental(), `AND PARSE_DATE('%Y%m%d', event_date) >= DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)`) }

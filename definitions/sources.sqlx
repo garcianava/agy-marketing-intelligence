@@ -1,7 +1,8 @@
 config {
   type: "declaration",
-  database: "your-gcp-project-id",
-  schema: "analytics_123456789",
+  database: "bigquery-public-data",
+  schema: "ga4_obfuscated_sample_ecommerce",
   name: "events_*",
-  description: "Raw Google Analytics 4 exported tables from BigQuery"
+  description: "Google Analytics 4 obfuscated sample e-commerce dataset"
 }
+
